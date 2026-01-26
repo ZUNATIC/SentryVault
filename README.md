@@ -1,5 +1,11 @@
 # 🛡️ SentryVault: Tactical Library Audit Dashboard
-SentryVault is a professional-grade cybersecurity tool to audit dependencies for vulnerabilities.
+SentryVault is a professional-grade cybersecurity tool to audit dependencies for vulnerabilities. Developed by UMAE HABIBA
+
+## ✨ Features
+- OSV API Integration for real-time vulnerability detection
+- Professional PDF Report Generation
+- Interactive Risk Visualization with Chart.js
+- Dark/Light Mode Support
 
 ## 🛠️ Setup
 1. python3 -m venv venv
