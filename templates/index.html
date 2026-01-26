@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SentryVault | Tactical Audit Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        * { transition: none !important; } /* Instant theme switch */
+        body { font-family: 'Space Grotesk', sans-serif; min-height: 100vh; }
+        html { font-size: 17px; } 
+        .dark { --bg-color: #020617; --card-bg: rgba(15, 23, 42, 0.95); --text-main: #f1f5f9; --border-color: rgba(51, 65, 85, 0.6); }
+        .light { --bg-color: #f1f5f9; --card-bg: #ffffff; --text-main: #0f172a; --border-color: rgba(203, 213, 225, 1); }
+        body { background-color: var(--bg-color); color: var(--text-main); }
+        .glass { background: var(--card-bg); border: 2px solid var(--border-color); }
+        .max-container { width: 94%; max-width: 1500px; margin: 0 auto; }
+    </style>
+</head>
+<body class="dark overflow-x-hidden">
+
+    <nav class="sticky top-0 z-50 glass border-b shadow-lg">
+        <div class="max-container flex justify-between items-center p-5">
+            <div class="flex items-center gap-4">
+                <div class="p-2.5 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30">
+                    <i data-lucide="shield-check" class="text-white w-7 h-7"></i>
+                </div>
+                <a href="/" class="text-2xl font-black tracking-tighter uppercase dark:text-white text-slate-900">Sentry<span class="text-blue-500">Vault</span></a>
+            </div>
+            <button onclick="toggleTheme()" class="p-3 rounded-2xl bg-slate-800/50 dark:bg-slate-200 border border-slate-700 dark:border-slate-300">
+                <i id="theme-icon" data-lucide="sun" class="w-6 h-6 text-yellow-500 dark:text-slate-800"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-container py-10 grid grid-cols-12 gap-10">
+        <aside class="col-span-12 lg:col-span-3">
+            <div class="glass rounded-[2.5rem] p-8 lg:sticky lg:top-32 lg:h-[calc(100vh-160px)] flex flex-col shadow-2xl">
+                <h2 class="text-xs font-bold text-slate-500 uppercase mb-8 flex items-center gap-3">
+                    <i data-lucide="database" class="w-5 h-5 text-blue-500"></i> Audit History
+                </h2>
+                <div class="space-y-4 overflow-y-auto flex-grow pr-2">
+                    {% for scan in history %}
+                    <a href="/view/{{ scan[0] }}" class="block p-5 rounded-2xl border-2 {% if scan_id == scan[0] %}bg-blue-600 border-blue-600 text-white{% else %}border-transparent bg-slate-500/5 dark:text-slate-300 text-slate-600{% endif %}">
+                        <div class="text-sm font-bold truncate">{{ scan[2] }}</div>
+                        <div class="text-[10px] mt-2 font-mono uppercase">{{ scan[1] }}</div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+
+        <div class="col-span-12 lg:col-span-9 space-y-8">
+            <div class="glass rounded-[3rem] p-12 relative shadow-2xl">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-10">
+                    <div class="flex-1">
+                        <h1 class="text-3xl font-black uppercase">Scan Your Project for Vulnerabilities</h1>
+                        <p class="text-lg text-slate-500 font-medium italic">Check if your libraries are safe to use.</p>
+                    </div>
+                    <div class="relative group/btn shrink-0">
+                        <form action="/scan" method="post" enctype="multipart/form-data">
+                            <label class="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] font-black text-lg cursor-pointer flex items-center gap-4 shadow-2xl shadow-blue-600/40">
+                                <i data-lucide="zap" class="w-6 h-6"></i> START SCAN
+                                <input type="file" name="file" class="hidden" onchange="this.form.submit()">
+                            </label>
+                        </form>
+                        <span class="absolute bottom-full mb-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-xs px-5 py-3 rounded-2xl opacity-0 group-hover/btn:opacity-100 border border-slate-700 pointer-events-none shadow-2xl z-[100] font-bold">
+                            Upload <span class="text-blue-400">requirements.txt</span> or <span class="text-blue-400">package.json</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {% if results %}
+            <div class="grid grid-cols-12 gap-8">
+                <div class="lg:col-span-5 glass rounded-[2.5rem] p-8 flex flex-col items-center">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-6">Threat Assessment</h3>
+                    <div class="w-full h-52 relative"><canvas id="riskChart"></canvas></div>
+                </div>
+                <div class="lg:col-span-7 flex flex-col gap-6">
+                    <div class="grid grid-cols-2 gap-6 flex-grow">
+                        <div class="glass p-10 rounded-[2.5rem] text-center">
+                            <div class="text-slate-500 text-xs font-bold uppercase mb-2">Packages</div>
+                            <div class="text-5xl font-black">{{ results|length }}</div>
+                        </div>
+                        <div class="glass p-10 rounded-[2.5rem] border-l-8 border-l-red-600 text-center">
+                            <div class="text-red-600 text-xs font-bold uppercase mb-2">Critical</div>
+                            <div class="text-5xl font-black text-red-600">{{ results | selectattr('risk', 'equalto', 'Critical') | list | length }}</div>
+                        </div>
+                    </div>
+                    <a href="/download/{{ scan_id }}" class="glass border-emerald-500/40 hover:bg-emerald-600 hover:text-white p-6 rounded-[2rem] flex justify-between items-center group">
+                        <div class="flex items-center gap-5">
+                            <i data-lucide="file-down" class="w-8 h-8 text-emerald-500 group-hover:text-white"></i>
+                            <span class="text-lg font-black uppercase">Download Security Audit PDF</span>
+                        </div>
+                        <i data-lucide="arrow-right-circle" class="w-7 h-7"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="glass rounded-[3rem] overflow-x-auto shadow-2xl mb-10">
+                <table class="w-full text-left min-w-[750px]">
+                    <thead class="bg-slate-500/5 text-xs font-bold text-slate-400 uppercase border-b-2 dark:border-slate-800">
+                        <tr><th class="px-10 py-6">Library Identity</th><th class="px-10 py-6 text-center">Threat Status</th><th class="px-10 py-6">Remediation Path</th></tr>
+                    </thead>
+                    <tbody class="divide-y-2 dark:divide-slate-800">
+                        {% for item in results %}
+                        <tr class="hover:bg-blue-500/5 group text-base">
+                            <td class="px-10 py-8">
+                                <div class="flex items-center gap-5">
+                                    <div class="w-12 h-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-xs font-black text-blue-500 border-2 border-blue-500/20">{{ item.type[:2] | upper }}</div>
+                                    <div>
+                                        <div class="font-bold text-lg dark:text-slate-100 text-slate-900 uppercase">{{ item.name }}</div>
+                                        <div class="text-[10px] font-mono text-slate-500 mt-1 uppercase">
+                                            {% if item.version == "Not Specified in your file" %}<span class="text-amber-500/70 italic">{{ item.version }}</span>{% else %}v{{ item.version }}{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-10 py-8 text-center">
+                                <span class="{% if item.risk == 'Critical' %}bg-red-600 text-white{% elif item.risk == 'Moderate' %}bg-amber-500 text-white{% else %}bg-emerald-600 text-white{% endif %} px-6 py-2.5 rounded-full text-xs font-black uppercase shadow-lg">
+                                    {{ item.risk }}
+                                </span>
+                            </td>
+                            <td class="px-10 py-8">
+                                <div class="bg-black/5 dark:bg-black/40 p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-800">
+                                    <code class="text-xs font-bold text-blue-600 dark:text-blue-400">{{ item.fix }}</code>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark');
+            if (isDark) { body.classList.replace('dark', 'light'); localStorage.setItem('theme', 'light'); }
+            else { body.classList.replace('light', 'dark'); localStorage.setItem('theme', 'dark'); }
+            updateIcon(!isDark);
+        }
+        function updateIcon(isDark) {
+            const icon = document.getElementById('theme-icon');
+            icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+            lucide.createIcons();
+        }
+        if (localStorage.getItem('theme') === 'light') { document.body.classList.replace('dark', 'light'); updateIcon(false); }
+
+        {% if results %}
+        const ctx = document.getElementById('riskChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Safe', 'Moderate', 'Critical'],
+                datasets: [{
+                    data: [{{ results | selectattr('risk', 'equalto', 'Safe') | list | length }}, {{ results | selectattr('risk', 'equalto', 'Moderate') | list | length }}, {{ results | selectattr('risk', 'equalto', 'Critical') | list | length }}],
+                    backgroundColor: ['#059669', '#f59e0b', '#dc2626'], borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 12, weight: 'bold' } } } }, cutout: '70%' }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

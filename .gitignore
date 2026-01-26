@@ -1,0 +1,6 @@
+venv/
+*.pyc
+__pycache__/
+scans.db
+static/reports/*.pdf
+.DS_Store
