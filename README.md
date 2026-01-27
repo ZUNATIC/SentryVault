@@ -1,4 +1,4 @@
-#  SentryVault: Tactical Library Audit Dashboard
+#  SentryVault: Tactical Libraries Audit Dashboard
 SentryVault is a professional-grade cybersecurity tool to audit dependencies for vulnerabilities. Developed by UMAE HABIBA
 
 ##  Features
