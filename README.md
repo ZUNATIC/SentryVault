@@ -12,4 +12,4 @@ SentryVault is a professional-grade cybersecurity tool to audit dependencies for
 3. pip install -r requirements.txt
 4. python3 -m uvicorn main:app --reload --port 8080
 
-Developed by **UMAE HABIBA**.
+Developed by **ZUNATIC**.
